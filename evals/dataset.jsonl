@@ -1,0 +1,7 @@
+{"id": "q1", "question": "What capital ratio must a credit institution maintain under CRR Article 92?", "expected_sources": ["crr-575-2013"], "must_contain": ["8%"], "must_not_contain": []}
+{"id": "q2", "question": "Under MiFID II, when must a firm report a transaction to the competent authority?", "expected_sources": ["mifid-ii-2014-65"], "must_contain": ["T+1"], "must_not_contain": []}
+{"id": "q3", "question": "What is the maximum administrative fine under GDPR Article 83 for a breach of Article 9?", "expected_sources": ["gdpr-2016-679"], "must_contain": ["20"], "must_not_contain": []}
+{"id": "q4", "question": "Does PSD2 require strong customer authentication for recurring direct debits?", "expected_sources": ["psd2-2015-2366"], "must_contain": [], "must_not_contain": []}
+{"id": "q5", "question": "What is the leverage ratio floor set out in CRR Article 429?", "expected_sources": ["crr-575-2013"], "must_contain": ["3%"], "must_not_contain": []}
+{"id": "q6", "question": "What is the share price of Deutsche Bank today?", "expected_sources": [], "must_contain": [], "must_not_contain": ["EUR", "$"], "expect_refusal": true}
+{"id": "q7", "question": "Who won the 2022 World Cup?", "expected_sources": [], "must_contain": [], "must_not_contain": ["Argentina"], "expect_refusal": true}
