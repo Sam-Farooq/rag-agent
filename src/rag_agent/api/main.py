@@ -107,4 +107,6 @@ class IngestRequest(BaseModel):
 async def ingest(req: IngestRequest) -> dict:
     if not req.documents:
         raise HTTPException(status_code=400, detail="no documents")
+    # TODO: chunk this. A 10k-document upsert blocks the loop for ~40s and the
+    # health check starts failing halfway through.
     return {"upserted": await state["store"].upsert(req.documents)}

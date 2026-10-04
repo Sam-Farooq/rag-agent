@@ -154,3 +154,19 @@ start off the request path.
 `pytest -q`. The routing tests assert the branch predicates directly rather
 than driving the graph through a mocked model: a test that stubs the LLM and
 checks the stub was called proves nothing about where the graph goes.
+
+## Not done
+
+- **The grader and the generator are the same model.** It marks its own work.
+  A smaller separate grader (bge-reranker already loaded, or a 7B judge) would
+  be both cheaper and less self-serving, but the calibration work to keep the
+  0.6 threshold meaningful across two models has not been done.
+- **Chunking is paragraph-aware and still wrong for tables.** Annex tables in
+  the CRR come out as a wall of digits with no header. Nothing downstream
+  notices because the text is technically present.
+- **No hybrid retrieval here.** Dense only. BM25 would help on statute numbers
+  and exact article references, which is precisely where dense embeddings are
+  weakest. The RRF implementation in `hybrid-search` was meant to be lifted
+  into this repo and has not been.
+- `max_batch_size` is unenforced on `/ingest`, so a large upsert can hold the
+  event loop. Has not mattered yet because ingest is run from a script.
