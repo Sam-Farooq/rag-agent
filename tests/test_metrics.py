@@ -2,9 +2,9 @@ from evals.metrics import CaseResult, citation_precision, refusal_accuracy, summ
 
 
 def _case(**kw):
-    base = dict(id="x", answered=True, expected_refusal=False, citation_hit=True,
-                contains_ok=True, forbidden_ok=True, retrieval_score=0.8,
-                grounding_score=0.9, latency_ms=100.0)
+    base = {"id": "x", "answered": True, "expected_refusal": False,
+            "citation_hit": True, "contains_ok": True, "forbidden_ok": True,
+            "retrieval_score": 0.8, "grounding_score": 0.9, "latency_ms": 100.0}
     return CaseResult(**{**base, **kw})
 
 

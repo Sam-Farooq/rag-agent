@@ -19,32 +19,32 @@ log = logging.getLogger(__name__)
 
 REWRITE = ChatPromptTemplate.from_messages([
     ("system",
-     "Rewrite the user question as a standalone search query for a regulatory "
-     "corpus. Keep every proper noun, statute number and date. Return the query "
-     "and nothing else."),
+     ("Rewrite the user question as a standalone search query for a regulatory "
+      "corpus. Keep every proper noun, statute number and date. Return the query "
+      "and nothing else.")),
     ("human", "{question}"),
 ])
 
 GRADE_DOCS = ChatPromptTemplate.from_messages([
     ("system",
-     "Score 0 to 1 how well these passages let you answer the question. "
-     "0.0 means nothing relevant, 1.0 means fully answerable. Be strict: a "
-     "passage about the right statute but the wrong subsection is not relevant."),
+     ("Score 0 to 1 how well these passages let you answer the question. "
+      "0.0 means nothing relevant, 1.0 means fully answerable. Be strict: a "
+      "passage about the right statute but the wrong subsection is not relevant.")),
     ("human", "Question: {question}\n\nPassages:\n{context}"),
 ])
 
 ANSWER = ChatPromptTemplate.from_messages([
     ("system",
-     "Answer using only the passages. Cite every claim as [source:page]. If the "
-     "passages do not contain the answer, say so plainly rather than reasoning "
-     "from general knowledge."),
+     ("Answer using only the passages. Cite every claim as [source:page]. If the "
+      "passages do not contain the answer, say so plainly rather than reasoning "
+      "from general knowledge.")),
     ("human", "Question: {question}\n\nPassages:\n{context}"),
 ])
 
 GROUNDING = ChatPromptTemplate.from_messages([
     ("system",
-     "Score 0 to 1 how fully the answer is supported by the passages. Any "
-     "sentence asserting a fact absent from the passages drives the score down."),
+     ("Score 0 to 1 how fully the answer is supported by the passages. Any "
+      "sentence asserting a fact absent from the passages drives the score down.")),
     ("human", "Passages:\n{context}\n\nAnswer:\n{answer}"),
 ])
 
