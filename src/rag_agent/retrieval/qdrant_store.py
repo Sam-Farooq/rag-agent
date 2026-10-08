@@ -1,11 +1,15 @@
 """Qdrant wrapper. Dense search only; the sparse half lives in hybrid-search."""
 from __future__ import annotations
 
+import logging
+
 from qdrant_client import AsyncQdrantClient, models
 
 from rag_agent.config import get_settings
 from rag_agent.graph.state import Document
 from rag_agent.retrieval.embedder import embed, embed_one
+
+log = logging.getLogger(__name__)
 
 
 class QdrantStore:
@@ -48,13 +52,22 @@ class QdrantStore:
             limit=limit,
             with_payload=True,
         )
-        return [
-            Document(
-                id=str(h.id),
-                text=h.payload["text"],
-                source=h.payload["source"],
-                page=h.payload.get("page"),
-                dense_score=h.score,
+        docs: list[Document] = []
+        for hit in hits.points:
+            payload = hit.payload or {}
+            text = payload.get("text")
+            if text is None:
+                # A point written by something other than upsert() above. Skip
+                # it rather than crash the whole search on one bad row.
+                log.warning("point %s has no text payload, skipping", hit.id)
+                continue
+            docs.append(
+                Document(
+                    id=str(hit.id),
+                    text=text,
+                    source=payload.get("source", ""),
+                    page=payload.get("page"),
+                    dense_score=hit.score,
+                )
             )
-            for h in hits.points
-        ]
+        return docs
