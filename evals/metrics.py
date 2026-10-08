@@ -54,11 +54,14 @@ def mean_grounding(results: list[CaseResult]) -> float:
     return sum(scored) / len(scored) if scored else 0.0
 
 
-def p95_latency(results: list[CaseResult]) -> float:
-    if not results:
-        return 0.0
-    ordered = sorted(r.latency_ms for r in results)
-    return ordered[min(int(len(ordered) * 0.95), len(ordered) - 1)]
+def slowest_latency(results: list[CaseResult]) -> float:
+    """The slowest case, not a percentile.
+
+    The held-out set is seven cases, and a p95 over seven samples is the
+    maximum with extra arithmetic in front of it. Naming it p95 would claim a
+    tail estimate the sample size cannot support.
+    """
+    return max((r.latency_ms for r in results), default=0.0)
 
 
 def summarise(results: list[CaseResult]) -> dict[str, float]:
@@ -67,6 +70,6 @@ def summarise(results: list[CaseResult]) -> dict[str, float]:
         "citation_precision": round(citation_precision(results), 3),
         "content_recall": round(content_recall(results), 3),
         "mean_grounding": round(mean_grounding(results), 3),
-        "p95_latency_ms": round(p95_latency(results), 1),
+        "slowest_ms": round(slowest_latency(results), 1),
         "n": len(results),
     }

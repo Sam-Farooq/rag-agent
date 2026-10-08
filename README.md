@@ -86,10 +86,15 @@ passages to reason over itself should not.
 `evals/dataset.jsonl` is a held-out set. Five questions answerable from the
 corpus, two that are not.
 
-The two unanswerable ones carry most of the signal. `refusal_accuracy` is gated
-at 1.0 in CI, so a prompt change that makes the model helpful enough to answer
-a question about yesterday's share price fails the build. Every other metric
-can regress a little and be argued about. That one cannot.
+The two unanswerable ones carry most of the signal. `refusal_accuracy` is
+gated at 1.0 in `evals/run_eval.py`, which exits non-zero below it, so a prompt
+change that makes the model helpful enough to answer a question about
+yesterday's share price fails the run. Every other metric can regress a little
+and be argued about. That one cannot.
+
+The gate is **not** wired into CI. The eval needs a running instance, a live
+Qdrant and an API key, so it is a pre-merge command rather than a build step.
+Recording a fixture set so it can run offline is the obvious next piece.
 
 ```
 $ make eval
@@ -98,7 +103,7 @@ $ make eval
   "citation_precision": 0.8,
   "content_recall": 0.8,
   "mean_grounding": 0.86,
-  "p95_latency_ms": 3180.4,
+  "slowest_ms": 3180.4,
   "n": 7
 }
 ```

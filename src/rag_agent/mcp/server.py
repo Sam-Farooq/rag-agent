@@ -1,78 +1,56 @@
 """MCP server.
 
 Exposes retrieval as two tools so an external client (Claude Desktop, an IDE,
-another agent) can search the corpus without going through the HTTP API. The
-graph is deliberately not exposed: a caller that wants the self-correction loop
-should call /ask, and a caller that wants raw passages should not pay for it.
+another agent) can query the corpus without going through the HTTP API.
+
+The graph is deliberately not exposed. A caller that wants the self-correction
+loop should call /ask and pay for it. A caller that wants raw passages to
+reason over itself should not have to.
 """
 from __future__ import annotations
 
-import asyncio
-
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.server.mcpserver import MCPServer
 
 from rag_agent.config import get_settings
 from rag_agent.retrieval.qdrant_store import QdrantStore
 from rag_agent.retrieval.reranker import CrossEncoderReranker
 
-server = Server("rag-agent")
+server = MCPServer(name="rag-agent")
 _store = QdrantStore()
 _reranker = CrossEncoderReranker()
 
-
-@server.list_tools()
-async def list_tools() -> list[Tool]:
-    return [
-        Tool(
-            name="search_regulations",
-            description=(
-                "Dense search over the indexed regulatory corpus, cross-encoder "
-                "re-ranked. Returns passages with source and page."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string"},
-                    "k": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20},
-                },
-                "required": ["query"],
-            },
-        ),
-        Tool(
-            name="get_collection_info",
-            description="Point count and vector config of the active collection.",
-            inputSchema={"type": "object", "properties": {}},
-        ),
-    ]
+MAX_RESULTS = 20
 
 
-@server.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+@server.tool()
+async def search_regulations(query: str, k: int = 5) -> str:
+    """Search the indexed regulatory corpus.
+
+    Dense retrieval followed by cross-encoder re-ranking. Returns passages with
+    their source and page.
+
+    Args:
+        query: What to search for.
+        k: How many passages to return, 1 to 20.
+    """
     cfg = get_settings()
-
-    if name == "search_regulations":
-        k = int(arguments.get("k", 5))
-        candidates = await _store.search(arguments["query"], limit=cfg.candidate_k)
-        ranked = await _reranker.rerank(arguments["query"], candidates)
-        body = "\n\n".join(
-            f"[{d.source}:{d.page}] (score {d.rerank_score:.3f})\n{d.text}"
-            for d in ranked[:k]
-        )
-        return [TextContent(type="text", text=body or "No matching passages.")]
-
-    if name == "get_collection_info":
-        info = await _store.client.get_collection(cfg.collection)
-        return [TextContent(type="text", text=f"points={info.points_count}")]
-
-    raise ValueError(f"unknown tool: {name}")
+    k = max(1, min(k, MAX_RESULTS))
+    candidates = await _store.search(query, limit=cfg.candidate_k)
+    ranked = await _reranker.rerank(query, candidates)
+    body = "\n\n".join(
+        f"[{d.source}:{d.page}] (score {d.rerank_score:.3f})\n{d.text}"
+        for d in ranked[:k]
+    )
+    return body or "No matching passages."
 
 
-async def main() -> None:
-    async with stdio_server() as (read, write):
-        await server.run(read, write, server.create_initialization_options())
+@server.tool()
+async def get_collection_info() -> str:
+    """Report how many points are indexed in the active collection."""
+    cfg = get_settings()
+    info = await _store.client.get_collection(cfg.collection)
+    return f"collection={cfg.collection} points={info.points_count}"
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    server.run(transport="stdio")
