@@ -15,6 +15,7 @@ import re
 import uuid
 from pathlib import Path
 
+from rag_agent.config import get_settings
 from rag_agent.graph.state import Document
 from rag_agent.retrieval.qdrant_store import QdrantStore
 
@@ -57,9 +58,12 @@ async def main() -> None:
             docs.append(Document(id=str(uuid.uuid4()), text=piece,
                                  source=args.source, page=page))
 
-    for i in range(0, len(docs), 128):
-        await store.upsert(docs[i : i + 128])
-        print(f"upserted {min(i + 128, len(docs))}/{len(docs)}")
+    # upsert() batches internally now, so this loop is only here to print
+    # progress. It steps by the same setting so the count matches the writes.
+    size = get_settings().max_batch_size
+    for i in range(0, len(docs), size):
+        await store.upsert(docs[i : i + size])
+        print(f"upserted {min(i + size, len(docs))}/{len(docs)}")
 
 
 if __name__ == "__main__":
