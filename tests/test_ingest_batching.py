@@ -1,14 +1,16 @@
 """Ingest batching.
 
-Two separate things are asserted here. First, that `upsert` never embeds or
-writes more than `max_batch_size` documents in one go, which is what issue #5
-asked for. Second, that the event loop stays free while a batch is embedding,
+Three things are asserted here. That `upsert` never embeds or writes more than
+`max_batch_size` documents in one go, at the store and through the route, which
+is what issue #5 asked for. That a batch size below one is refused where the
+setting is read. And that the event loop stays free while a batch is embedding,
 which is the part of #5 that was wrong: `embed` already hands the model to a
 worker thread, so a long ingest never stopped /health from answering.
 """
 from __future__ import annotations
 
 import asyncio
+import time
 import uuid
 
 import numpy as np
@@ -94,8 +96,6 @@ async def test_the_event_loop_is_free_while_a_batch_embeds(monkeypatch):
 
     class SlowModel:
         def encode(self, texts, normalize_embeddings=False):
-            import time
-
             time.sleep(0.2)
             return np.zeros((len(texts), 2))
 
@@ -113,8 +113,8 @@ async def test_the_event_loop_is_free_while_a_batch_embeds(monkeypatch):
     await emb.embed([f"doc {i}" for i in range(500)])
     beat.cancel()
 
-    # 0.2s of encoding against a 5ms heartbeat. Anything above a handful of
-    # ticks means the loop kept running. Dropping the to_thread hop and
+    # 0.2s of encoding against a 5ms heartbeat measures 37 ticks here, so the
+    # floor leaves room for a slower machine. Dropping the to_thread hop and
     # calling _run() inline leaves this at 0.
     assert ticks > 10
 
