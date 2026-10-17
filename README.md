@@ -150,6 +150,16 @@ first attempt.
 **The query is only rewritten on retry.** On the first pass the user's wording
 is usually the best available signal, and the rewrite costs a model call.
 
+**Ingest is written in batches, set by `RAG_MAX_BATCH_SIZE` and 128 by
+default.** `/ingest` takes its document list from the request body, so the
+batch is the only thing bounding how much is embedded and written at once. An
+earlier note here said an unbounded upsert could hold the event loop. It could
+not: `embed` runs the model in a worker thread, so `/health` keeps answering
+throughout. What it held was memory, in the returned vectors and in the single
+Qdrant request body. Batching costs atomicity, which was never offered anyway:
+a failure partway leaves the earlier batches written, and a rerun converges
+because the point ids come from the caller.
+
 **Model weights are baked into the image.** The embedder and cross-encoder come
 to about 500MB together. That is a large image in exchange for keeping cold
 start off the request path.
@@ -173,5 +183,3 @@ checks the stub was called proves nothing about where the graph goes.
   and exact article references, which is precisely where dense embeddings are
   weakest. The RRF implementation in `hybrid-search` was meant to be lifted
   into this repo and has not been.
-- `max_batch_size` is unenforced on `/ingest`, so a large upsert can hold the
-  event loop. Has not mattered yet because ingest is run from a script.
