@@ -13,8 +13,10 @@ import uuid
 
 import numpy as np
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from rag_agent.api import main
 from rag_agent.config import Settings
 from rag_agent.graph.state import Document
 from rag_agent.retrieval import embedder as emb
@@ -115,3 +117,29 @@ async def test_the_event_loop_is_free_while_a_batch_embeds(monkeypatch):
     # ticks means the loop kept running. Dropping the to_thread hop and
     # calling _run() inline leaves this at 0.
     assert ticks > 10
+
+
+def test_the_ingest_route_writes_in_batches(store, monkeypatch):
+    # The route is what issue #5 named, so it is driven over HTTP rather than
+    # by calling upsert again. Lifespan is skipped: TestClient only runs it as
+    # a context manager, so the store is injected instead of being built.
+    store.cfg = store.cfg.model_copy(update={"max_batch_size": 10})
+    monkeypatch.setitem(main.state, "store", store)
+    client = TestClient(main.app)
+
+    body = {"documents": [d.model_dump() for d in _docs(25)]}
+    response = client.post("/ingest", json=body)
+
+    assert response.status_code == 200
+    assert response.json() == {"upserted": 25}
+    assert store.client.batches == [10, 10, 5]
+
+
+def test_the_ingest_route_still_refuses_an_empty_list(store, monkeypatch):
+    monkeypatch.setitem(main.state, "store", store)
+    client = TestClient(main.app)
+
+    response = client.post("/ingest", json={"documents": []})
+
+    assert response.status_code == 400
+    assert store.client.batches == []
