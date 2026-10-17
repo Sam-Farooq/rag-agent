@@ -30,6 +30,15 @@ class QdrantStore:
         )
 
     async def upsert(self, docs: list[Document]) -> int:
+        # Batched, because one embed call and one Qdrant write both hold the
+        # whole list. The caller is not always a script: /ingest passes the
+        # request body straight through, so the batch is the only bound.
+        size = self.cfg.max_batch_size
+        for start in range(0, len(docs), size):
+            await self._upsert_batch(docs[start : start + size])
+        return len(docs)
+
+    async def _upsert_batch(self, docs: list[Document]) -> None:
         vectors = await embed([d.text for d in docs])
         await self.client.upsert(
             collection_name=self.cfg.collection,
@@ -42,7 +51,6 @@ class QdrantStore:
                 for d, v in zip(docs, vectors, strict=True)
             ],
         )
-        return len(docs)
 
     async def search(self, query: str, limit: int) -> list[Document]:
         vector = await embed_one(query)
