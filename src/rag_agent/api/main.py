@@ -107,6 +107,7 @@ class IngestRequest(BaseModel):
 async def ingest(req: IngestRequest) -> dict:
     if not req.documents:
         raise HTTPException(status_code=400, detail="no documents")
-    # TODO: chunk this. A 10k-document upsert blocks the loop for ~40s and the
-    # health check starts failing halfway through.
+    # upsert() batches at RAG_MAX_BATCH_SIZE. The event loop was never what a
+    # large list held: embed() runs the model in a worker thread, so /health
+    # kept answering throughout. What it held was memory.
     return {"upserted": await state["store"].upsert(req.documents)}

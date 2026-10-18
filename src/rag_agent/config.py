@@ -1,6 +1,7 @@
 """Settings. Everything is env-driven so the same image runs locally and on EKS."""
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +24,14 @@ class Settings(BaseSettings):
     candidate_k: int = 24
     final_k: int = 5
     min_rerank_score: float = 0.15
+
+    # Ingest. Documents are embedded and written this many at a time. Both
+    # halves hold a whole batch: the embedder returns a float per dimension
+    # per document, and the Qdrant write carries those same vectors as one
+    # request body. /ingest takes its list from the request, so without a
+    # batch the peak is whatever the caller sent. 128 matches the size
+    # scripts/ingest.py has always used.
+    max_batch_size: int = Field(default=128, ge=1)
 
     # Self-correction loop
     max_retrieval_retries: int = 2
